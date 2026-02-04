@@ -1,264 +1,221 @@
-# SquadBoard - Atomic Architecture Map (Reasoning Units)
+# SquadBoard - Atomic Architecture Map
 
-## Why this doc exists
-This document decomposes SquadBoard into independent atomic reasoning units ("atoms") so we can:
-- Navigate the system quickly ("where do I build X?")
-- Change one area without accidentally breaking others
+## Why This Doc Exists
+Decomposes SquadBoard into independent reasoning units so we can:
+- Navigate quickly ("where do I build X?")
+- Change one area without breaking others
 - Validate behavior with clear invariants
-
-## How to use this doc (practical workflow)
-- **Step 1** — Identify the atom(s) you're touching using the "Atom Index"
-- **Step 2** — Confirm dependencies (Supabase, agents, other atoms) before coding
-- **Step 3** — Preserve invariants listed under that atom (these are the "must not break" rules)
-- **Step 4** — Verify with evidence: run the app, check console, test the feature
-
----
 
 ## Atom Index
 
-| ID | Atom Name | Purpose | Location (lines) |
-|---|---|---|---|
-| A1 | Config | Supabase connection settings | 25-32 |
-| A2 | App State | Global state management (tasks, agents, UI) | 34-42 |
-| A3 | Agent Panel | Display and filter by agents | 44-110, 295-330 |
-| A4 | Task Board | Kanban columns with cards | 112-200, 380-450 |
-| A5 | Task Modal | Detail view for editing tasks | 550-750 |
-| A6 | Supabase API | All database operations | 480-530 |
-| A7 | Auto-refresh | Background sync when tab visible | 76-95, 410-430 |
+| ID | Atom | Purpose | Key Functions |
+|----|------|---------|---------------|
+| A1 | Config | Supabase connection | `CONFIG` object |
+| A2 | App State | Global state container | `app` object |
+| A3 | Sidebar | Agent panel, activity feed, rules | `renderAgents()`, `renderActivityFeed()` |
+| A4 | Board | Kanban columns with DnD | `render()`, `setupDropZones()` |
+| A5 | Task Cards | Card display with priority/dates | In `render()` |
+| A6 | Task Modal | Edit view with comments | `openTaskModal()`, `saveTaskFromModal()` |
+| A7 | Create Modal | New task form | `openCreateModal()`, `createTask()` |
+| A8 | Supabase API | All REST operations | `supabaseFetch()`, CRUD functions |
+| A9 | Keyboard | Shortcuts & navigation | `setupKeyboardShortcuts()` |
+| A10 | Search | Filter by title | `setupSearchInput()` |
 
 ---
 
 ## Atom Details
 
 ### A1: Config
-**Purpose:** Central configuration for Supabase connection
-
-**Interface:**
 ```javascript
 const CONFIG = {
-    supabaseUrl: string,
-    supabaseKey: string,
+    supabaseUrl: 'https://onyrtmjnktrqcwvmemlp.supabase.co',
+    supabaseKey: '[service_role_key]',
     table: 'tasks'
 }
 ```
-
-**Dependencies:**
-- Supabase project `onyrtmjnktrqcwvmemlp`
-- `tasks` table with proper RLS or service_role key
-
-**Invariants (MUST NOT BREAK):**
-- `supabaseKey` must have write access (service_role or RLS policy)
-- `table` must exist in Supabase
-- URL must be valid Supabase REST endpoint
-
-**Evidence of working:**
-- Page loads with "● Connected" status
-- Console shows "SquadBoard connected to Supabase"
+**Invariants:**
+- Key must have write access
+- URL must be valid Supabase endpoint
 
 ---
 
 ### A2: App State
-**Purpose:** Central state container for the entire app
-
-**Interface:**
 ```javascript
 app = {
-    tasks: Array<Task>,
-    agents: Array<Agent>,
-    selectedAgent: string|null,
-    currentModal: HTMLElement|null,
-    refreshInterval: number|null
+    tasks: [],              // All tasks from Supabase
+    agents: [],             // Hardcoded agent list
+    activities: [],         // Activity log
+    selectedAgent: null,    // Filter state
+    selectedTaskId: null,   // Keyboard selection
+    searchQuery: '',        // Search filter
+    refreshInterval: null,  // Auto-refresh timer
+    currentModal: null      // Active modal element
 }
 ```
-
-**Dependencies:**
-- A1 (Config) for Supabase connection
-- A6 (Supabase API) to populate state
-
 **Invariants:**
-- `tasks` is always an array (never null)
-- `agents` is hardcoded, never fetched
-- `selectedAgent` filters render but doesn't affect data fetch
-
-**Evidence of working:**
-- Tasks display in correct columns
-- Agent panel shows all 5 agents
-- Selecting agent filters task list
+- `tasks` is always an array
+- `selectedAgent` is null or agent name string
 
 ---
 
-### A3: Agent Panel
-**Purpose:** Display squad agents, show status, enable filtering
+### A3: Sidebar
+**Components:**
+- Agent list with status indicators
+- Global rules display
+- Activity feed (last 20 actions)
+- Collapse toggle
 
-**Interface:**
-```javascript
-// Render
-renderAgents() → void
-
-// Interaction
-selectAgent(name: string) → void
-```
-
-**Dependencies:**
-- A2 (App State) for `app.agents` and `app.selectedAgent`
+**Functions:**
+- `renderAgents()` - Renders agent cards
+- `renderActivityFeed()` - Renders activity list
+- `toggleSidebar()` - Collapse/expand
+- `logActivity(action, taskTitle, emoji)` - Add activity
 
 **Invariants:**
-- Always shows exactly 5 agents: Steve, Jarvis, Kodi, Scout, Teddy
-- Clicking agent toggles filter (click again to clear)
-- Visual highlight shows selected agent
-- Status colors: Active (green), Focus (orange), Standby (gray)
-
-**Evidence of working:**
-- All 5 agents visible with emoji, name, model, status
-- Click Steve → only Steve's tasks show
-- Click Steve again → all tasks show
+- 5 agents always shown (Steve, Jarvis, Kodi, Scout, Teddy)
+- Collapsed state persisted to localStorage
 
 ---
 
-### A4: Task Board
-**Purpose:** Render Kanban columns with draggable task cards
+### A4: Board
+**Columns:** To Do, In Progress, In Review, Done
 
-**Interface:**
-```javascript
-// Render
-render() → void  // Uses app.tasks, app.selectedAgent
+**Functions:**
+- `render()` - Renders all task cards
+- `setupDropZones()` - Initializes drag-drop
 
-// Status Mapping (LYFE → SquadBoard)
-todo → 'backlog' (To Do column)
-in_progress → 'inprogress' (In Progress column) 
-in_progress + metadata.uiColumn='inreview' → 'inreview' (In Review column)
-archived → 'done' (Done column)
-```
-
-**Dependencies:**
-- A2 (App State) for tasks and selected agent filter
-- A3 (Agent Panel) for filter state
+**Status Mapping:**
+| Supabase Status | UI Column |
+|-----------------|-----------|
+| `todo` | To Do |
+| `in_progress` | In Progress |
+| `in_progress` + `uiColumn='inreview'` | In Review |
+| `archived` | Done |
 
 **Invariants:**
 - Every task appears in exactly one column
-- Task count badge matches visible cards
-- Empty columns show "No tasks" message
-- Clicking card opens A5 (Task Modal)
-
-**Evidence of working:**
-- 4 columns display with correct headers
-- Tasks sorted by created_at desc
-- Count badges accurate
-- Click task → modal opens
+- Count badges match visible cards
+- Empty columns show "No tasks"
 
 ---
 
-### A5: Task Modal
-**Purpose:** Full-featured task editor (ClickUp-style detail view)
+### A5: Task Cards
+**Display:**
+- Agent emoji (top-left)
+- Priority dot (top-right): 🔴 High, 🟡 Medium, 🟢 Low
+- Title (truncated to 2 lines)
+- Due date with relative time
+- Comment count
 
-**Interface:**
-```javascript
-// Open
-openTaskModal(task: Task) → void
+**Interactions:**
+- Click → Open task modal
+- Drag → Move between columns
+- Hover → Quick actions menu
 
-// Actions
-saveTaskFromModal(taskId: string) → void
-moveTaskFromModal(taskId: string, status: string, uiColumn?: string) → void
-deleteTaskFromModal(taskId: string) → void
-closeModal() → void
-```
+---
 
-**Dependencies:**
-- A2 (App State) to read task data
-- A6 (Supabase API) to persist changes
-- A4 (Task Board) to refresh after changes
+### A6: Task Modal
+**Editable Fields:**
+- Title, Description, Assignee, Priority
+
+**Read-only:**
+- Created date, Due date, Current status
+
+**Actions:**
+- Save changes
+- Move to status (4 buttons)
+- Delete (with confirmation)
+- Add comment
 
 **Invariants:**
-- Modal shows all task fields: title, description, assignee, priority, dates, status
-- Save updates task without closing modal (user can continue editing)
-- Move status buttons immediately apply and close modal
-- Delete requires confirmation
-- ESC key or click overlay closes modal
-
-**Evidence of working:**
-- Click task card → modal opens with correct data
-- Edit title → Save → task updates in background
-- Click "In Progress" → task moves, modal closes, board refreshes
-- Click Delete → confirm → task removed
+- ESC or overlay click closes modal
+- Comments persist to `metadata.comments[]`
 
 ---
 
-### A6: Supabase API
-**Purpose:** All database operations via REST API
+### A7: Create Modal
+**Fields:**
+- Title (required)
+- Description (optional)
+- Assignee dropdown
+- Priority dropdown
 
-**Interface:**
+**Auto-suggest Logic:**
+| Keywords | Suggested Agent |
+|----------|-----------------|
+| research, find, look up | Scout 🔭 |
+| build, fix, code, implement | Kodi 🛠️ |
+| draft, email, document | Teddy 📋 |
+| default | Steve 🦞 |
+
+---
+
+### A8: Supabase API
 ```javascript
-// Generic fetch
-supabaseFetch(path: string, options?: RequestInit) → Promise<any>
-
-// CRUD operations
+supabaseFetch(path, options) → Promise<any>
 loadTasks() → Promise<void>
 createTask() → Promise<void>
-editTask(task: Task) → Promise<void>
-moveTask(id: string, status: string) → Promise<void>
-deleteTask(id: string) → Promise<void>
+saveTaskFromModal(id) → Promise<void>
+moveTask(id, status, uiColumn?) → Promise<void>
+deleteTask(id) → Promise<void>
+addComment(id) → Promise<void>
 ```
 
-**Dependencies:**
-- A1 (Config) for URL and API key
-- Supabase REST API availability
+**Headers:**
+- `apikey` and `Authorization` with service key
+- `Prefer: return=representation` on POST
 
 **Invariants:**
-- All requests include `apikey` and `Authorization` headers
-- POST includes `Prefer: return=representation` header
-- 204 responses (DELETE) handled gracefully (no JSON parse)
-- Errors thrown with descriptive messages
-
-**Evidence of working:**
-- Network tab shows 200 responses
-- Console shows "Task created" logs
-- Failed requests show alert with error message
+- 204 responses handled (no JSON parse)
+- Errors shown via alert()
 
 ---
 
-### A7: Auto-refresh
-**Purpose:** Background sync when tab is visible
-
-**Interface:**
-```javascript
-startRefreshInterval() → void
-stopRefreshInterval() → void
-```
-
-**Dependencies:**
-- A2 (App State) for interval management
-- A6 (Supabase API) to fetch updates
-- Browser `visibilitychange` API
+### A9: Keyboard Shortcuts
+| Key | Action | Context |
+|-----|--------|---------|
+| `n` | New task | Global |
+| `/` | Focus search | Global |
+| `?` | Show help | Global |
+| `Escape` | Close modal | Modal open |
+| `j` / `↓` | Next task | No modal |
+| `k` / `↑` | Previous task | No modal |
+| `Enter` | Open task | Task selected |
+| `1-4` | Move to column | Task selected |
 
 **Invariants:**
-- Only runs when tab is visible (saves API calls)
-- Interval is 10 seconds (not too aggressive)
-- Previous interval cleared before starting new one
-- Cleanup on page unload
+- Disabled when typing in input/textarea
+- Selection visual: blue outline
 
-**Evidence of working:**
-- Switch to tab → tasks refresh
-- Switch away → no network requests in background
-- Console shows regular "SquadBoard connected" messages
+---
+
+### A10: Search
+- Input in header
+- Filters `app.tasks` by title match
+- Case-insensitive
+- Real-time (on keyup)
 
 ---
 
 ## Cross-Cutting Concerns
 
 ### Memory Management
-- **Rule:** Every `addEventListener` must have matching `removeEventListener`
-- **Location:** A5 (Task Modal), Context Menu (if re-added)
-- **Evidence:** No detached DOM nodes in Chrome DevTools Memory tab
+- Event listeners cleaned up on modal close
+- Drag-drop handlers attached once
 
 ### XSS Prevention
-- **Rule:** Never use `innerHTML` with user input
-- **Location:** A4 (Task Board), A5 (Task Modal)
-- **Method:** `escapeHtml()` function creates text node
+- All user input through `escapeHtml()`
+- Never raw `innerHTML` with user data
 
 ### Mobile Responsive
-- **Rule:** Must work on phone screens
-- **Location:** CSS media queries at lines ~130-140
-- **Test:** Resize browser to <768px, verify single column layout
+- < 768px: Sidebar becomes horizontal bar
+- Touch drag-drop supported
+
+### localStorage
+| Key | Data |
+|-----|------|
+| `squadboard-sidebar-collapsed` | boolean |
+| `squadboard-activities` | Activity[] |
 
 ---
 
@@ -266,32 +223,13 @@ stopRefreshInterval() → void
 
 When modifying ANY atom:
 - [ ] Page loads without console errors
-- [ ] Can create new task
-- [ ] Can edit task title/description
-- [ ] Can move task between columns
-- [ ] Can delete task
-- [ ] Agent filter works
-- [ ] Modal opens and closes properly
-- [ ] Changes persist after refresh
+- [ ] Tasks load from Supabase
+- [ ] Can create new task via modal
+- [ ] Can edit task in modal
+- [ ] Drag-drop moves tasks
+- [ ] Keyboard shortcuts work
+- [ ] Search filters correctly
+- [ ] Comments save and display
+- [ ] Activity feed updates
 - [ ] Mobile layout works
-
----
-
-## Recent Changes Log
-
-| Date | Atom | Change |
-|---|---|---|
-| 2026-02-04 | A1 | Added service_role key |
-| 2026-02-04 | A3 | Added Agent Panel |
-| 2026-02-04 | A5 | Added Task Modal |
-| 2026-02-04 | A6 | Fixed memory leaks in event listeners |
-
----
-
-## AGENTS.md Cross-Reference
-
-For detailed implementation notes, see `AGENTS.md` in this folder:
-- Agent Panel implementation details
-- Task Modal form handling
-- Supabase schema documentation
-- Gotchas and common mistakes
+- [ ] Sidebar collapse works
