@@ -47,27 +47,104 @@
             cursor: not-allowed;
         }
         
-        /* Agent Panel */
-        .agent-panel {
-            background: #161b22;
-            padding: 15px 20px;
-            border-bottom: 1px solid #30363d;
+        /* App Layout - Sidebar + Main Content */
+        .app-layout {
             display: flex;
-            gap: 15px;
-            overflow-x: auto;
+            min-height: calc(100vh - 61px);
         }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: width 0.2s ease;
+            overflow: hidden;
+        }
+        .sidebar.collapsed {
+            width: 60px;
+            padding: 16px 8px;
+        }
+        .sidebar.collapsed .agent-name,
+        .sidebar.collapsed .agent-role,
+        .sidebar.collapsed .global-rules,
+        .sidebar.collapsed .activity-feed,
+        .sidebar.collapsed .sidebar-header h3 {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-header {
+            justify-content: center;
+        }
+        .sidebar.collapsed .agent-card {
+            padding: 10px;
+            justify-content: center;
+        }
+        .sidebar.collapsed .agent-header {
+            justify-content: center;
+        }
+        .sidebar.collapsed .status-indicator {
+            display: none;
+        }
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #30363d;
+        }
+        .sidebar-header h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #e6edf3;
+            margin: 0;
+        }
+        .sidebar-toggle {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #7d8590;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .sidebar-toggle:hover {
+            background: #30363d;
+            color: #e6edf3;
+        }
+        
+        .agent-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        }
+        
+        /* Agent Cards - Vertical Layout */
         .agent-card {
             background: #21262d;
             border: 2px solid #30363d;
-            border-radius: 10px;
-            padding: 12px 16px;
-            min-width: 140px;
+            border-radius: 8px;
+            padding: 10px 12px;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
         .agent-card:hover {
             border-color: #58a6ff;
-            transform: translateY(-2px);
+            background: #262c36;
+        }
+        .agent-card.selected {
+            border-color: #58a6ff;
+            background: #58a6ff20;
         }
         .agent-card.active {
             border-color: #238636;
@@ -81,37 +158,138 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 6px;
         }
+        .status-indicator {
+            font-size: 0.6rem;
+            line-height: 1;
+        }
+        .status-indicator.active { color: #238636; }
+        .status-indicator.standby { color: #7d8590; }
+        .status-indicator.focus { color: #f0883e; }
         .agent-emoji {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
         }
         .agent-name {
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
+            flex: 1;
         }
-        .agent-model {
+        .agent-role {
             font-size: 0.7rem;
             color: #7d8590;
-            margin-bottom: 4px;
+            margin-left: 22px;
         }
-        .agent-status {
+        
+        /* Global Rules */
+        .global-rules {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid #30363d;
+        }
+        .global-rules h4 {
+            font-size: 0.8rem;
+            color: #7d8590;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .global-rules ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .global-rules li {
+            font-size: 0.7rem;
+            color: #7d8590;
+            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Activity Feed */
+        .activity-feed {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #30363d;
+        }
+        .activity-feed h4 {
+            font-size: 0.85rem;
+            color: #7d8590;
+            margin-bottom: 12px;
+        }
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .activity-item {
             font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            display: inline-block;
+            color: #e6edf3;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
         }
-        .agent-status.active { background: #238636; color: white; }
-        .agent-status.focus { background: #f0883e; color: black; }
-        .agent-status.standby { background: #30363d; color: #7d8590; }
+        .activity-time {
+            color: #7d8590;
+            margin-left: auto;
+        }
+        .activity-empty {
+            font-size: 0.75rem;
+            color: #7d8590;
+            font-style: italic;
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-x: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content .loading,
+        .main-content .error {
+            margin: 20px;
+        }
         
         .board {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             padding: 20px;
+            flex: 1;
         }
         @media (max-width: 768px) {
+            .app-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100% !important;
+                flex-direction: row;
+                padding: 10px;
+                border-right: none;
+                border-bottom: 1px solid #30363d;
+                min-height: auto;
+            }
+            .sidebar.collapsed {
+                width: 100% !important;
+            }
+            .sidebar-header {
+                display: none;
+            }
+            .agent-list {
+                flex-direction: row;
+                overflow-x: auto;
+                gap: 10px;
+            }
+            .agent-card {
+                min-width: 100px;
+                flex-shrink: 0;
+            }
+            .global-rules {
+                display: none;
+            }
             .board {
                 grid-template-columns: 1fr;
                 gap: 10px;
@@ -120,9 +298,6 @@
             header {
                 flex-direction: column;
                 text-align: center;
-            }
-            .agent-panel {
-                padding: 10px;
             }
         }
         .column {
@@ -164,6 +339,79 @@
         .task-card:hover {
             border-color: #58a6ff;
             transform: translateY(-2px);
+        }
+        .task-card.selected {
+            outline: 2px solid #58a6ff;
+        }
+        .task-card:hover .quick-actions-btn {
+            opacity: 1;
+        }
+        .quick-actions-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #30363d;
+            border: none;
+            color: #7d8590;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .quick-actions-btn:hover {
+            background: #484f58;
+            color: #e6edf3;
+        }
+        .quick-actions-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 1000;
+            min-width: 150px;
+            overflow: hidden;
+        }
+        .quick-actions-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 14px;
+            background: none;
+            border: none;
+            color: #e6edf3;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .quick-actions-menu button:hover {
+            background: #30363d;
+        }
+        .quick-actions-menu .submenu {
+            position: relative;
+        }
+        .quick-actions-menu .submenu-items {
+            display: none;
+            position: absolute;
+            left: 100%;
+            top: 0;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            min-width: 140px;
+        }
+        .quick-actions-menu .submenu:hover .submenu-items {
+            display: block;
+        }
+        .quick-actions-menu .danger {
+            color: #f85149;
         }
         .task-card.processing {
             opacity: 0.6;
@@ -342,6 +590,71 @@
         .btn-danger:hover {
             background: #f85149;
         }
+        
+        /* Comments Section */
+        .comments-section {
+            padding: 20px;
+            border-top: 1px solid #30363d;
+        }
+        .comments-section h4 {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: #e6edf3;
+        }
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .comment-item {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .comment-author {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .comment-time {
+            font-size: 0.75rem;
+            color: #7d8590;
+        }
+        .comment-text {
+            font-size: 0.85rem;
+            color: #e6edf3;
+        }
+        .comment-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        .comment-input-wrapper textarea {
+            flex: 1;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px;
+            color: #e6edf3;
+            font-family: inherit;
+            resize: none;
+        }
+        .btn-comment {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+        .comments-empty {
+            color: #7d8590;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 20px;
+        }
         .meta-info {
             background: #21262d;
             padding: 12px;
@@ -364,40 +677,116 @@
         .meta-value {
             font-size: 0.85rem;
         }
+        
+        /* Search Input */
+        .search-input {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e6edf3;
+            font-size: 0.9rem;
+            width: 200px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        .search-input::placeholder {
+            color: #7d8590;
+        }
+        
+        /* Help Modal */
+        .shortcuts-list {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.9rem;
+        }
+        .shortcuts-section {
+            margin-bottom: 20px;
+        }
+        .shortcuts-section h3 {
+            color: #7d8590;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #30363d;
+        }
+        .shortcut-row:last-child {
+            border-bottom: none;
+        }
+        .shortcut-key {
+            background: #30363d;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>🦞 SquadBoard</h1>
+        <input type="text" id="searchInput" placeholder="Search tasks... (/)" class="search-input">
         <span class="connection-status" id="connStatus">● Connected</span>
         <button onclick="app.openCreateModal()" id="addBtn">+ New Task</button>
     </header>
     
-    <!-- Agent Panel -->
-    <div class="agent-panel" id="agentPanel">
-        <!-- Agents loaded dynamically -->
-    </div>
-    
-    <div id="loading" class="loading">Loading tasks from Supabase...</div>
-    <div id="error" class="error" style="display:none;"></div>
-    
-    <div class="board" id="board" style="display:none;">
-        <div class="column" data-status="backlog">
-            <h2>📋 To Do <span class="count" id="count-backlog">0</span></h2>
-            <div class="task-container" id="col-backlog"></div>
-        </div>
-        <div class="column" data-status="inprogress">
-            <h2>⚡ In Progress <span class="count" id="count-inprogress">0</span></h2>
-            <div class="task-container" id="col-inprogress"></div>
-        </div>
-        <div class="column" data-status="inreview">
-            <h2>👀 In Review <span class="count" id="count-inreview">0</span></h2>
-            <div class="task-container" id="col-inreview"></div>
-        </div>
-        <div class="column" data-status="done">
-            <h2>✅ Done <span class="count" id="count-done">0</span></h2>
-            <div class="task-container" id="col-done"></div>
-        </div>
+    <div class="app-layout">
+        <!-- Sidebar with Agents -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>🎯 Agents</h3>
+                <button class="sidebar-toggle" onclick="app.toggleSidebar()">◀</button>
+            </div>
+            <div class="agent-list" id="agentPanel">
+                <!-- Agents loaded dynamically -->
+            </div>
+            <div class="global-rules">
+                <h4>📜 Global Rules</h4>
+                <ul>
+                    <li>⚡ Write only if empty</li>
+                    <li>⚡ Never overwrite</li>
+                    <li>⚡ No external sends</li>
+                    <li>⚡ Time/budget caps</li>
+                </ul>
+            </div>
+            <div class="activity-feed">
+                <h4>🕒 Activity</h4>
+                <div class="activity-list" id="activityList">
+                    <!-- Activity items here -->
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="loading" class="loading">Loading tasks from Supabase...</div>
+            <div id="error" class="error" style="display:none;"></div>
+            
+            <div class="board" id="board" style="display:none;">
+                <div class="column" data-status="backlog">
+                    <h2>📋 To Do <span class="count" id="count-backlog">0</span></h2>
+                    <div class="task-container" id="col-backlog"></div>
+                </div>
+                <div class="column" data-status="inprogress">
+                    <h2>⚡ In Progress <span class="count" id="count-inprogress">0</span></h2>
+                    <div class="task-container" id="col-inprogress"></div>
+                </div>
+                <div class="column" data-status="inreview">
+                    <h2>👀 In Review <span class="count" id="count-inreview">0</span></h2>
+                    <div class="task-container" id="col-inreview"></div>
+                </div>
+                <div class="column" data-status="done">
+                    <h2>✅ Done <span class="count" id="count-done">0</span></h2>
+                    <div class="task-container" id="col-done"></div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script>
@@ -411,9 +800,13 @@
         const app = {
             tasks: [],
             agents: [],
+            activities: [],
             refreshInterval: null,
             currentModal: null,
             selectedAgent: null,
+            selectedTaskId: null,
+            searchQuery: '',
+            quickActionsMenu: null,
             
             async init() {
                 try {
@@ -424,6 +817,10 @@
                     this.renderAgents();
                     this.render();
                     this.setupDropZones();
+                    this.setupKeyboardShortcuts();
+                    this.setupSearchInput();
+                    this.activities = JSON.parse(localStorage.getItem('squadboard-activities') || '[]');
+                    this.renderActivityFeed();
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('board').style.display = 'grid';
                     console.log('SquadBoard connected to Supabase');
@@ -451,25 +848,49 @@
             async loadAgents() {
                 // Hardcoded agents from controller_agents table
                 this.agents = [
-                    { id: 'steve', name: 'Steve', emoji: '🦞', model: 'claude-opus-4-5', status: 'Active' },
-                    { id: 'jarvis', name: 'Jarvis', emoji: '🤖', model: 'gpt-5.2', status: 'Standby' },
-                    { id: 'kodi', name: 'Kodi', emoji: '🛠️', model: 'gpt-5.2-codex', status: 'Standby' },
-                    { id: 'scout', name: 'Scout', emoji: '🔭', model: 'gpt-5.2', status: 'Standby' },
-                    { id: 'teddy', name: 'Teddy', emoji: '📋', model: 'gpt-5.2', status: 'Standby' }
+                    { id: 'steve', name: 'Steve', emoji: '🦞', role: 'Controller', status: 'Active' },
+                    { id: 'jarvis', name: 'Jarvis', emoji: '🤖', role: 'Assistant', status: 'Standby' },
+                    { id: 'kodi', name: 'Kodi', emoji: '🛠️', role: 'Developer', status: 'Standby' },
+                    { id: 'scout', name: 'Scout', emoji: '🔭', role: 'Researcher', status: 'Standby' },
+                    { id: 'teddy', name: 'Teddy', emoji: '📋', role: 'Writer', status: 'Standby' }
                 ];
+                
+                // Load sidebar collapsed state from localStorage
+                const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                if (collapsed) {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                    document.querySelector('.sidebar-toggle').textContent = '▶';
+                }
+            },
+            
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const toggle = document.querySelector('.sidebar-toggle');
+                const isCollapsed = sidebar.classList.toggle('collapsed');
+                toggle.textContent = isCollapsed ? '▶' : '◀';
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
             },
             
             renderAgents() {
                 const panel = document.getElementById('agentPanel');
+                const statusSymbol = (status) => {
+                    switch(status.toLowerCase()) {
+                        case 'active': return '●';
+                        case 'focus': return '⭘';
+                        default: return '○';
+                    }
+                };
+                
                 panel.innerHTML = this.agents.map(agent => `
                     <div class="agent-card ${agent.status.toLowerCase()} ${this.selectedAgent === agent.name ? 'selected' : ''}" 
-                         onclick="app.selectAgent('${agent.name}')">
+                         onclick="app.selectAgent('${agent.name}')"
+                         title="${agent.name} - ${agent.role} (${agent.status})">
                         <div class="agent-header">
+                            <span class="status-indicator ${agent.status.toLowerCase()}">${statusSymbol(agent.status)}</span>
                             <span class="agent-emoji">${agent.emoji}</span>
                             <span class="agent-name">${agent.name}</span>
                         </div>
-                        <div class="agent-model">${agent.model}</div>
-                        <span class="agent-status ${agent.status.toLowerCase()}">${agent.status}</span>
+                        <div class="agent-role">${agent.role}</div>
                     </div>
                 `).join('');
             },
@@ -488,6 +909,279 @@
                     container.addEventListener('dragleave', (e) => this.handleDragLeave(e));
                     container.addEventListener('drop', (e) => this.handleDrop(e));
                 });
+            },
+            
+            setupSearchInput() {
+                const searchInput = document.getElementById('searchInput');
+                searchInput.addEventListener('input', (e) => {
+                    this.searchQuery = e.target.value.toLowerCase();
+                    this.render();
+                });
+            },
+            
+            setupKeyboardShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    const activeEl = document.activeElement;
+                    const isTyping = activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable;
+                    
+                    if (e.key === 'Escape') {
+                        this.closeQuickActions();
+                        if (this.currentModal) {
+                            this.closeModal();
+                        }
+                        return;
+                    }
+                    
+                    if (isTyping) return;
+                    
+                    switch (e.key) {
+                        case 'n':
+                            if (!this.currentModal) {
+                                e.preventDefault();
+                                this.openCreateModal();
+                            }
+                            break;
+                        case '?':
+                            e.preventDefault();
+                            this.showKeyboardShortcutsHelp();
+                            break;
+                        case '/':
+                            e.preventDefault();
+                            document.getElementById('searchInput').focus();
+                            break;
+                        case 'j':
+                        case 'ArrowDown':
+                            if (!this.currentModal) {
+                                e.preventDefault();
+                                this.selectNextTask();
+                            }
+                            break;
+                        case 'k':
+                        case 'ArrowUp':
+                            if (!this.currentModal) {
+                                e.preventDefault();
+                                this.selectPreviousTask();
+                            }
+                            break;
+                        case 'Enter':
+                            if (!this.currentModal && this.selectedTaskId) {
+                                e.preventDefault();
+                                const task = this.tasks.find(t => t.id === this.selectedTaskId);
+                                if (task) this.openTaskModal(task);
+                            }
+                            break;
+                        case '1':
+                            if (!this.currentModal && this.selectedTaskId) {
+                                e.preventDefault();
+                                this.moveTask(this.selectedTaskId, 'todo', null);
+                            }
+                            break;
+                        case '2':
+                            if (!this.currentModal && this.selectedTaskId) {
+                                e.preventDefault();
+                                this.moveTask(this.selectedTaskId, 'in_progress', null);
+                            }
+                            break;
+                        case '3':
+                            if (!this.currentModal && this.selectedTaskId) {
+                                e.preventDefault();
+                                this.moveTask(this.selectedTaskId, 'in_progress', 'inreview');
+                            }
+                            break;
+                        case '4':
+                            if (!this.currentModal && this.selectedTaskId) {
+                                e.preventDefault();
+                                this.moveTask(this.selectedTaskId, 'archived', null);
+                            }
+                            break;
+                    }
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (this.quickActionsMenu && !e.target.closest('.quick-actions-menu') && !e.target.closest('.quick-actions-btn')) {
+                        this.closeQuickActions();
+                    }
+                });
+            },
+            
+            getVisibleTasks() {
+                let tasks = this.tasks;
+                if (this.selectedAgent) {
+                    tasks = tasks.filter(t => t.metadata?.assignee_name === this.selectedAgent);
+                }
+                if (this.searchQuery) {
+                    tasks = tasks.filter(t => t.title.toLowerCase().includes(this.searchQuery));
+                }
+                return tasks;
+            },
+            
+            selectNextTask() {
+                const visibleTasks = this.getVisibleTasks();
+                if (visibleTasks.length === 0) return;
+                
+                if (!this.selectedTaskId) {
+                    this.selectedTaskId = visibleTasks[0].id;
+                } else {
+                    const currentIndex = visibleTasks.findIndex(t => t.id === this.selectedTaskId);
+                    const nextIndex = (currentIndex + 1) % visibleTasks.length;
+                    this.selectedTaskId = visibleTasks[nextIndex].id;
+                }
+                this.render();
+                this.scrollToSelectedTask();
+            },
+            
+            selectPreviousTask() {
+                const visibleTasks = this.getVisibleTasks();
+                if (visibleTasks.length === 0) return;
+                
+                if (!this.selectedTaskId) {
+                    this.selectedTaskId = visibleTasks[visibleTasks.length - 1].id;
+                } else {
+                    const currentIndex = visibleTasks.findIndex(t => t.id === this.selectedTaskId);
+                    const prevIndex = (currentIndex - 1 + visibleTasks.length) % visibleTasks.length;
+                    this.selectedTaskId = visibleTasks[prevIndex].id;
+                }
+                this.render();
+                this.scrollToSelectedTask();
+            },
+            
+            scrollToSelectedTask() {
+                const el = document.getElementById(`task-${this.selectedTaskId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            },
+            
+            showKeyboardShortcutsHelp() {
+                this.closeModal();
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal" style="max-width: 400px;">
+                        <div class="modal-header">
+                            <span class="modal-title">⌨️ Keyboard Shortcuts</span>
+                            <button class="modal-close" onclick="app.closeModal()">&times;</button>
+                        </div>
+                        <div class="modal-body shortcuts-list">
+                            <div class="shortcuts-section">
+                                <h3>General</h3>
+                                <div class="shortcut-row">
+                                    <span>New task</span>
+                                    <span class="shortcut-key">n</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>Search</span>
+                                    <span class="shortcut-key">/</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>Close modal</span>
+                                    <span class="shortcut-key">Esc</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>This help</span>
+                                    <span class="shortcut-key">?</span>
+                                </div>
+                            </div>
+                            
+                            <div class="shortcuts-section">
+                                <h3>Navigation</h3>
+                                <div class="shortcut-row">
+                                    <span>Next task</span>
+                                    <span class="shortcut-key">j / ↓</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>Previous task</span>
+                                    <span class="shortcut-key">k / ↑</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>Open task</span>
+                                    <span class="shortcut-key">Enter</span>
+                                </div>
+                            </div>
+                            
+                            <div class="shortcuts-section">
+                                <h3>Move Task</h3>
+                                <div class="shortcut-row">
+                                    <span>To Do</span>
+                                    <span class="shortcut-key">1</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>In Progress</span>
+                                    <span class="shortcut-key">2</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>In Review</span>
+                                    <span class="shortcut-key">3</span>
+                                </div>
+                                <div class="shortcut-row">
+                                    <span>Done</span>
+                                    <span class="shortcut-key">4</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                modal.onclick = (e) => {
+                    if (e.target === modal) this.closeModal();
+                };
+                
+                document.body.appendChild(modal);
+                this.currentModal = modal;
+            },
+            
+            showQuickActions(event, task) {
+                event.stopPropagation();
+                this.closeQuickActions();
+                
+                const btn = event.currentTarget;
+                const card = btn.closest('.task-card');
+                
+                const menu = document.createElement('div');
+                menu.className = 'quick-actions-menu';
+                menu.innerHTML = `
+                    <button onclick="app.openTaskModal(app.tasks.find(t => t.id === '${task.id}')); app.closeQuickActions();">
+                        ✏️ Edit
+                    </button>
+                    <div class="submenu">
+                        <button>📁 Move to →</button>
+                        <div class="submenu-items">
+                            <button onclick="app.moveTask('${task.id}', 'todo', null); app.closeQuickActions();">📋 To Do</button>
+                            <button onclick="app.moveTask('${task.id}', 'in_progress', null); app.closeQuickActions();">⚡ In Progress</button>
+                            <button onclick="app.moveTask('${task.id}', 'in_progress', 'inreview'); app.closeQuickActions();">👀 In Review</button>
+                            <button onclick="app.moveTask('${task.id}', 'archived', null); app.closeQuickActions();">✅ Done</button>
+                        </div>
+                    </div>
+                    <button class="danger" onclick="app.deleteTaskQuick('${task.id}');">
+                        🗑️ Delete
+                    </button>
+                `;
+                
+                card.appendChild(menu);
+                this.quickActionsMenu = menu;
+            },
+            
+            closeQuickActions() {
+                if (this.quickActionsMenu) {
+                    this.quickActionsMenu.remove();
+                    this.quickActionsMenu = null;
+                }
+            },
+            
+            async deleteTaskQuick(taskId) {
+                if (!confirm('Are you sure you want to delete this task?')) return;
+                
+                this.closeQuickActions();
+                try {
+                    await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
+                        method: 'DELETE'
+                    });
+                    await this.loadTasks();
+                    this.render();
+                } catch (err) {
+                    alert('Failed to delete: ' + err.message);
+                }
             },
             
             handleDragStart(e, taskId) {
@@ -575,6 +1269,10 @@
                     body: JSON.stringify(updateData)
                 });
                 
+                const columnName = this.formatStatus(status, uiColumn);
+                const emoji = task.metadata?.emoji || '👤';
+                this.logActivity('moved to ' + columnName, task.title, emoji);
+                
                 task.status = status;
                 task.metadata = updateData.metadata;
                 
@@ -649,6 +1347,11 @@
                         return;
                     }
                     
+                    // Search filter
+                    if (this.searchQuery && !task.title.toLowerCase().includes(this.searchQuery)) {
+                        return;
+                    }
+                    
                     let column;
                     if (task.metadata?.uiColumn === 'inreview') {
                         column = 'inreview';
@@ -665,11 +1368,12 @@
                         : '';
 
                     const card = document.createElement('div');
-                    card.className = 'task-card';
+                    card.className = 'task-card' + (task.id === this.selectedTaskId ? ' selected' : '');
                     card.id = `task-${task.id}`;
                     card.draggable = true;
                     card.dataset.taskId = task.id;
                     card.innerHTML = `
+                        <button class="quick-actions-btn" onclick="event.stopPropagation(); app.showQuickActions(event, app.tasks.find(t => t.id === '${task.id}'))">⋮</button>
                         <div class="task-header">
                             <span class="task-assignee">${emoji}</span>
                             <span class="priority-dot ${priority}"></span>
@@ -775,6 +1479,15 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="comments-section">
+                            <h4>💬 Comments</h4>
+                            <div class="comments-list" id="commentsList">
+                            </div>
+                            <div class="comment-input-wrapper">
+                                <textarea id="newComment" placeholder="Add a comment..." rows="2"></textarea>
+                                <button onclick="app.addComment('${task.id}')" class="btn-comment">Post</button>
+                            </div>
+                        </div>
                         <div class="modal-footer">
                             <button class="btn-danger" onclick="app.deleteTaskFromModal('${task.id}')">Delete</button>
                             <button class="btn-secondary" onclick="app.closeModal()">Cancel</button>
@@ -789,6 +1502,7 @@
                 
                 document.body.appendChild(modal);
                 this.currentModal = modal;
+                this.renderComments(task.id);
             },
             
             closeModal() {
@@ -842,6 +1556,9 @@
                     return;
                 }
                 
+                const originalTask = this.tasks.find(t => t.id === taskId);
+                const titleChanged = originalTask && originalTask.title !== title;
+                
                 try {
                     const agent = this.agents.find(a => a.name === assigneeName);
                     const emoji = agent ? agent.emoji : '👤';
@@ -859,6 +1576,10 @@
                             }
                         })
                     });
+                    
+                    if (titleChanged) {
+                        this.logActivity('updated', title, emoji);
+                    }
                     
                     this.closeModal();
                     await this.loadTasks();
@@ -891,10 +1612,14 @@
             async deleteTaskFromModal(taskId) {
                 if (!confirm('Are you sure you want to delete this task?')) return;
                 
+                const task = this.tasks.find(t => t.id === taskId);
+                const taskTitle = task ? task.title : 'Unknown';
+                
                 try {
                     await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
                         method: 'DELETE'
                     });
+                    this.logActivity('deleted', taskTitle, '🗑️');
                     this.closeModal();
                     await this.loadTasks();
                     this.render();
@@ -1021,6 +1746,7 @@
                         })
                     });
 
+                    this.logActivity('created', title, emoji);
                     this.closeModal();
                     await this.loadTasks();
                     this.render();
@@ -1035,6 +1761,104 @@
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
+            },
+            
+            logActivity(action, taskTitle, agentEmoji) {
+                const activity = {
+                    emoji: agentEmoji,
+                    action: action,
+                    taskTitle: taskTitle,
+                    time: Date.now()
+                };
+                this.activities.unshift(activity);
+                if (this.activities.length > 20) this.activities.pop();
+                this.renderActivityFeed();
+                localStorage.setItem('squadboard-activities', JSON.stringify(this.activities));
+            },
+            
+            renderActivityFeed() {
+                const list = document.getElementById('activityList');
+                if (!list) return;
+                
+                if (this.activities.length === 0) {
+                    list.innerHTML = '<div class="activity-empty">No recent activity</div>';
+                    return;
+                }
+                
+                list.innerHTML = this.activities.map(a => `
+                    <div class="activity-item">
+                        <span class="activity-emoji">${a.emoji}</span>
+                        <span class="activity-text">${a.action} "${this.escapeHtml(a.taskTitle)}"</span>
+                        <span class="activity-time">${this.relativeTime(a.time)}</span>
+                    </div>
+                `).join('');
+            },
+            
+            relativeTime(timestamp) {
+                const diff = Date.now() - timestamp;
+                const mins = Math.floor(diff / 60000);
+                if (mins < 1) return 'just now';
+                if (mins < 60) return mins + 'm ago';
+                const hours = Math.floor(mins / 60);
+                if (hours < 24) return hours + 'h ago';
+                return Math.floor(hours / 24) + 'd ago';
+            },
+            
+            renderComments(taskId) {
+                const task = this.tasks.find(t => t.id === taskId);
+                const list = document.getElementById('commentsList');
+                if (!list || !task) return;
+                
+                const comments = task.metadata?.comments || [];
+                
+                if (comments.length === 0) {
+                    list.innerHTML = '<div class="comments-empty">No comments yet</div>';
+                    return;
+                }
+                
+                list.innerHTML = comments.map(c => `
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <span class="comment-author">${c.emoji || '👤'} ${this.escapeHtml(c.author)}</span>
+                            <span class="comment-time">${this.relativeTime(c.time)}</span>
+                        </div>
+                        <div class="comment-text">${this.escapeHtml(c.text)}</div>
+                    </div>
+                `).join('');
+            },
+            
+            async addComment(taskId) {
+                const input = document.getElementById('newComment');
+                const text = input.value.trim();
+                if (!text) return;
+                
+                const task = this.tasks.find(t => t.id === taskId);
+                if (!task) return;
+                
+                const comments = task.metadata?.comments || [];
+                comments.push({
+                    id: 'c' + Date.now(),
+                    author: 'Steve',
+                    emoji: '🦞',
+                    text: text,
+                    time: Date.now()
+                });
+                
+                try {
+                    await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            metadata: { ...task.metadata, comments }
+                        })
+                    });
+                    
+                    input.value = '';
+                    await this.loadTasks();
+                    this.renderComments(taskId);
+                    this.logActivity('commented on', task.title, '💬');
+                } catch (err) {
+                    alert('Failed to add comment: ' + err.message);
+                }
             }
         };
         
