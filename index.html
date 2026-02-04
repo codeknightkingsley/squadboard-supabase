@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SquadBoard | Connected</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+        header {
+            background: #161b22;
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h1 { font-size: 1.5rem; }
+        .connection-status {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #238636;
+        }
+        .connection-status.offline {
+            background: #da3633;
+        }
+        button {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:hover { background: #2ea043; }
+        button:disabled {
+            background: #30363d;
+            cursor: not-allowed;
+        }
+        
+        /* Agent Panel */
+        .agent-panel {
+            background: #161b22;
+            padding: 15px 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+        }
+        .agent-card {
+            background: #21262d;
+            border: 2px solid #30363d;
+            border-radius: 10px;
+            padding: 12px 16px;
+            min-width: 140px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .agent-card:hover {
+            border-color: #58a6ff;
+            transform: translateY(-2px);
+        }
+        .agent-card.active {
+            border-color: #238636;
+            background: #23863620;
+        }
+        .agent-card.focus {
+            border-color: #f0883e;
+            background: #f0883e20;
+        }
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .agent-emoji {
+            font-size: 1.3rem;
+        }
+        .agent-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .agent-model {
+            font-size: 0.7rem;
+            color: #7d8590;
+            margin-bottom: 4px;
+        }
+        .agent-status {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .agent-status.active { background: #238636; color: white; }
+        .agent-status.focus { background: #f0883e; color: black; }
+        .agent-status.standby { background: #30363d; color: #7d8590; }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 20px;
+        }
+        @media (max-width: 768px) {
+            .board {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                padding: 10px;
+            }
+            header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .agent-panel {
+                padding: 10px;
+            }
+        }
+        .column {
+            background: #161b22;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            min-height: 400px;
+        }
+        .column h2 {
+            padding: 15px;
+            font-size: 1rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+        }
+        .count {
+            background: #30363d;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+        .task-container {
+            padding: 10px;
+            min-height: 300px;
+        }
+        .task-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .task-card:hover {
+            border-color: #58a6ff;
+            transform: translateY(-2px);
+        }
+        .task-card.processing {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .task-assignee {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+        .task-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .task-meta {
+            font-size: 0.75rem;
+            color: #7d8590;
+            margin-top: 6px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7d8590;
+        }
+        .error {
+            background: #da3633;
+            color: white;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7d8590;
+            font-size: 0.9rem;
+        }
+        
+        /* Task Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        .modal {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #7d8590;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close:hover {
+            color: #e6edf3;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            color: #7d8590;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #e6edf3;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #30363d;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .btn-secondary {
+            background: #30363d;
+        }
+        .btn-secondary:hover {
+            background: #484f58;
+        }
+        .btn-danger {
+            background: #da3633;
+            margin-right: auto;
+        }
+        .btn-danger:hover {
+            background: #f85149;
+        }
+        .meta-info {
+            background: #21262d;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #30363d;
+        }
+        .meta-row:last-child {
+            border-bottom: none;
+        }
+        .meta-label {
+            color: #7d8590;
+            font-size: 0.85rem;
+        }
+        .meta-value {
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🦞 SquadBoard</h1>
+        <span class="connection-status" id="connStatus">● Connected</span>
+        <button onclick="app.createTask()" id="addBtn">+ New Task</button>
+    </header>
+    
+    <!-- Agent Panel -->
+    <div class="agent-panel" id="agentPanel">
+        <!-- Agents loaded dynamically -->
+    </div>
+    
+    <div id="loading" class="loading">Loading tasks from Supabase...</div>
+    <div id="error" class="error" style="display:none;"></div>
+    
+    <div class="board" id="board" style="display:none;">
+        <div class="column" data-status="backlog">
+            <h2>📋 To Do <span class="count" id="count-backlog">0</span></h2>
+            <div class="task-container" id="col-backlog"></div>
+        </div>
+        <div class="column" data-status="inprogress">
+            <h2>⚡ In Progress <span class="count" id="count-inprogress">0</span></h2>
+            <div class="task-container" id="col-inprogress"></div>
+        </div>
+        <div class="column" data-status="inreview">
+            <h2>👀 In Review <span class="count" id="count-inreview">0</span></h2>
+            <div class="task-container" id="col-inreview"></div>
+        </div>
+        <div class="column" data-status="done">
+            <h2>✅ Done <span class="count" id="count-done">0</span></h2>
+            <div class="task-container" id="col-done"></div>
+        </div>
+    </div>
+
+    <script>
+        // SquadBoard connected to Supabase
+        const CONFIG = {
+            supabaseUrl: 'https://onyrtmjnktrqcwvmemlp.supabase.co',
+            supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ueXJ0bWpua3RycWN3dm1lbWxwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE4MDY2MiwiZXhwIjoyMDgxNzU2NjYyfQ._jxNjivDzGsPJ-iNx5mNT5T9IC26LSLs_YgcI5Y0EDg',
+            table: 'tasks'
+        };
+        
+        const app = {
+            tasks: [],
+            agents: [],
+            refreshInterval: null,
+            currentModal: null,
+            selectedAgent: null,
+            
+            async init() {
+                try {
+                    await Promise.all([
+                        this.loadAgents(),
+                        this.loadTasks()
+                    ]);
+                    this.renderAgents();
+                    this.render();
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('board').style.display = 'grid';
+                    console.log('SquadBoard connected to Supabase');
+                    
+                    this.startRefreshInterval();
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            this.stopRefreshInterval();
+                        } else {
+                            this.startRefreshInterval();
+                            this.loadTasks().then(() => this.render());
+                        }
+                    });
+                    
+                } catch (err) {
+                    console.error('Failed to load:', err);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').textContent = 'Error: ' + err.message;
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('connStatus').textContent = '● Offline';
+                    document.getElementById('connStatus').classList.add('offline');
+                }
+            },
+            
+            async loadAgents() {
+                // Hardcoded agents from controller_agents table
+                this.agents = [
+                    { id: 'steve', name: 'Steve', emoji: '🦞', model: 'claude-opus-4-5', status: 'Active' },
+                    { id: 'jarvis', name: 'Jarvis', emoji: '🤖', model: 'gpt-5.2', status: 'Standby' },
+                    { id: 'kodi', name: 'Kodi', emoji: '🛠️', model: 'gpt-5.2-codex', status: 'Standby' },
+                    { id: 'scout', name: 'Scout', emoji: '🔭', model: 'gpt-5.2', status: 'Standby' },
+                    { id: 'teddy', name: 'Teddy', emoji: '📋', model: 'gpt-5.2', status: 'Standby' }
+                ];
+            },
+            
+            renderAgents() {
+                const panel = document.getElementById('agentPanel');
+                panel.innerHTML = this.agents.map(agent => `
+                    <div class="agent-card ${agent.status.toLowerCase()} ${this.selectedAgent === agent.name ? 'selected' : ''}" 
+                         onclick="app.selectAgent('${agent.name}')">
+                        <div class="agent-header">
+                            <span class="agent-emoji">${agent.emoji}</span>
+                            <span class="agent-name">${agent.name}</span>
+                        </div>
+                        <div class="agent-model">${agent.model}</div>
+                        <span class="agent-status ${agent.status.toLowerCase()}">${agent.status}</span>
+                    </div>
+                `).join('');
+            },
+            
+            selectAgent(name) {
+                this.selectedAgent = this.selectedAgent === name ? null : name;
+                this.renderAgents();
+                this.render();
+            },
+            
+            startRefreshInterval() {
+                if (!this.refreshInterval) {
+                    this.refreshInterval = setInterval(() => {
+                        this.loadTasks().then(() => this.render()).catch(console.error);
+                    }, 10000);
+                }
+            },
+            
+            stopRefreshInterval() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                }
+            },
+            
+            async supabaseFetch(path, options = {}) {
+                const url = `${CONFIG.supabaseUrl}/rest/v1/${path}`;
+                const headers = {
+                    'apikey': CONFIG.supabaseKey,
+                    'Authorization': `Bearer ${CONFIG.supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+                if (options.method === 'POST') {
+                    headers['Prefer'] = 'return=representation';
+                }
+                
+                const res = await fetch(url, { ...options, headers });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+                if (res.status === 204) return null;
+                return res.json();
+            },
+            
+            async loadTasks() {
+                this.tasks = await this.supabaseFetch(`${CONFIG.table}?order=created_at.desc`);
+            },
+            
+            render() {
+                const statusToColumn = {
+                    todo: 'backlog',
+                    in_progress: 'inprogress',
+                    archived: 'done'
+                };
+
+                ['backlog', 'inprogress', 'inreview', 'done'].forEach(status => {
+                    const col = document.getElementById(`col-${status}`);
+                    if (col) col.innerHTML = '';
+                    const countEl = document.getElementById(`count-${status}`);
+                    if (countEl) countEl.textContent = '0';
+                });
+
+                const counts = { backlog: 0, inprogress: 0, inreview: 0, done: 0 };
+
+                this.tasks.forEach(task => {
+                    // Agent filter
+                    const assigneeName = task.metadata?.assignee_name || task.assigned_to || 'Unassigned';
+                    if (this.selectedAgent && assigneeName !== this.selectedAgent) {
+                        return;
+                    }
+                    
+                    let column;
+                    if (task.metadata?.uiColumn === 'inreview') {
+                        column = 'inreview';
+                    } else {
+                        column = statusToColumn[task.status] || 'backlog';
+                    }
+
+                    const emoji = task.metadata?.emoji || '👤';
+
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.id = `task-${task.id}`;
+                    card.innerHTML = `
+                        <div class="task-assignee">${emoji}</div>
+                        <div class="task-title">${this.escapeHtml(task.title)}</div>
+                        <div class="task-meta">${this.escapeHtml(assigneeName)}</div>
+                    `;
+
+                    card.onclick = () => this.openTaskModal(task);
+
+                    const col = document.getElementById(`col-${column}`);
+                    if (col) {
+                        col.appendChild(card);
+                        counts[column]++;
+                    }
+                });
+
+                ['backlog', 'inprogress', 'inreview', 'done'].forEach(status => {
+                    const col = document.getElementById(`col-${status}`);
+                    if (col && counts[status] === 0) {
+                        col.innerHTML = '<div class="empty-state">No tasks</div>';
+                    }
+                    const el = document.getElementById(`count-${status}`);
+                    if (el) el.textContent = counts[status];
+                });
+            },
+            
+            openTaskModal(task) {
+                this.closeModal();
+                
+                const assigneeName = task.metadata?.assignee_name || task.assigned_to || 'Unassigned';
+                const emoji = task.metadata?.emoji || '👤';
+                const createdDate = task.created_at ? new Date(task.created_at).toLocaleString() : 'Unknown';
+                const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date';
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal">
+                        <div class="modal-header">
+                            <span class="modal-title">${emoji} Task Details</span>
+                            <button class="modal-close" onclick="app.closeModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="meta-info">
+                                <div class="meta-row">
+                                    <span class="meta-label">Created</span>
+                                    <span class="meta-value">${createdDate}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Due Date</span>
+                                    <span class="meta-value">${dueDate}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Current Status</span>
+                                    <span class="meta-value">${this.formatStatus(task.status, task.metadata?.uiColumn)}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-input" id="modalTitle" value="${this.escapeHtml(task.title)}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-textarea" id="modalDescription" placeholder="Add a description...">${this.escapeHtml(task.description || '')}</textarea>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Assigned To</label>
+                                    <select class="form-select" id="modalAssignee">
+                                        ${this.agents.map(a => `
+                                            <option value="${a.name}" ${assigneeName === a.name ? 'selected' : ''}>
+                                                ${a.emoji} ${a.name}
+                                            </option>
+                                        `).join('')}
+                                        <option value="Unassigned" ${assigneeName === 'Unassigned' ? 'selected' : ''}>👤 Unassigned</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Priority</label>
+                                    <select class="form-select" id="modalPriority">
+                                        <option value="low" ${task.priority === 'low' ? 'selected' : ''}>Low</option>
+                                        <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                                        <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Move To Status</label>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button onclick="app.moveTaskFromModal('${task.id}', 'todo', null)" class="btn-secondary">📋 To Do</button>
+                                    <button onclick="app.moveTaskFromModal('${task.id}', 'in_progress', null)" class="btn-secondary">⚡ In Progress</button>
+                                    <button onclick="app.moveTaskFromModal('${task.id}', 'in_progress', 'inreview')" class="btn-secondary">👀 In Review</button>
+                                    <button onclick="app.moveTaskFromModal('${task.id}', 'archived', null)" class="btn-secondary">✅ Done</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-danger" onclick="app.deleteTaskFromModal('${task.id}')">Delete</button>
+                            <button class="btn-secondary" onclick="app.closeModal()">Cancel</button>
+                            <button onclick="app.saveTaskFromModal('${task.id}')">Save Changes</button>
+                        </div>
+                    </div>
+                `;
+                
+                modal.onclick = (e) => {
+                    if (e.target === modal) this.closeModal();
+                };
+                
+                document.body.appendChild(modal);
+                this.currentModal = modal;
+            },
+            
+            closeModal() {
+                if (this.currentModal) {
+                    this.currentModal.remove();
+                    this.currentModal = null;
+                }
+            },
+            
+            formatStatus(status, uiColumn) {
+                if (uiColumn === 'inreview') return 'In Review';
+                const map = { todo: 'To Do', in_progress: 'In Progress', archived: 'Done' };
+                return map[status] || status;
+            },
+            
+            async saveTaskFromModal(taskId) {
+                const title = document.getElementById('modalTitle').value.trim();
+                const description = document.getElementById('modalDescription').value.trim();
+                const assigneeName = document.getElementById('modalAssignee').value;
+                const priority = document.getElementById('modalPriority').value;
+                
+                if (!title) {
+                    alert('Title is required');
+                    return;
+                }
+                
+                try {
+                    const agent = this.agents.find(a => a.name === assigneeName);
+                    const emoji = agent ? agent.emoji : '👤';
+                    
+                    await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            title,
+                            description: description || null,
+                            priority,
+                            metadata: { 
+                                emoji, 
+                                assignee_name: assigneeName,
+                                uiColumn: this.tasks.find(t => t.id === taskId)?.metadata?.uiColumn
+                            }
+                        })
+                    });
+                    
+                    this.closeModal();
+                    await this.loadTasks();
+                    this.render();
+                } catch (err) {
+                    alert('Failed to save: ' + err.message);
+                }
+            },
+            
+            async moveTaskFromModal(taskId, status, uiColumn) {
+                try {
+                    const updateData = { status };
+                    if (uiColumn) {
+                        updateData.metadata = { uiColumn };
+                    }
+                    
+                    await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(updateData)
+                    });
+                    
+                    this.closeModal();
+                    await this.loadTasks();
+                    this.render();
+                } catch (err) {
+                    alert('Failed to move: ' + err.message);
+                }
+            },
+            
+            async deleteTaskFromModal(taskId) {
+                if (!confirm('Are you sure you want to delete this task?')) return;
+                
+                try {
+                    await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
+                        method: 'DELETE'
+                    });
+                    this.closeModal();
+                    await this.loadTasks();
+                    this.render();
+                } catch (err) {
+                    alert('Failed to delete: ' + err.message);
+                }
+            },
+            
+            async createTask() {
+                const title = prompt('Task title:');
+                if (!title || !title.trim()) return;
+
+                const assignedTo = prompt('Assign to (Steve, Jarvis, Kodi, Scout, Teddy):', 'Steve') || 'Steve';
+                const agent = this.agents.find(a => a.name === assignedTo.trim());
+                const emoji = agent ? agent.emoji : '👤';
+
+                try {
+                    document.getElementById('addBtn').disabled = true;
+
+                    await this.supabaseFetch(CONFIG.table, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: title.trim(),
+                            status: 'todo',
+                            priority: 'medium',
+                            metadata: { emoji, assignee_name: assignedTo.trim() },
+                            created_at: new Date().toISOString()
+                        })
+                    });
+
+                    await this.loadTasks();
+                    this.render();
+                } catch (err) {
+                    alert('Failed to create task: ' + err.message);
+                } finally {
+                    document.getElementById('addBtn').disabled = false;
+                }
+            },
+            
+            escapeHtml(text) {
+                if (text == null) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        };
+        
+        app.init();
+        
+        window.addEventListener('beforeunload', () => {
+            app.stopRefreshInterval();
+        });
+    </script>
+</body>
+</html>
