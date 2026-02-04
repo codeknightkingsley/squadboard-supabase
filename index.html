@@ -154,9 +154,12 @@
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 10px;
-            cursor: pointer;
+            cursor: grab;
             transition: all 0.2s;
             position: relative;
+        }
+        .task-card:active {
+            cursor: grabbing;
         }
         .task-card:hover {
             border-color: #58a6ff;
@@ -166,18 +169,51 @@
             opacity: 0.6;
             pointer-events: none;
         }
+        .task-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        .task-container.drag-over {
+            background: rgba(88, 166, 255, 0.1);
+            border: 2px dashed #58a6ff;
+            border-radius: 8px;
+        }
         .task-assignee {
             font-size: 1.2rem;
             margin-bottom: 4px;
         }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .priority-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .priority-dot.high { background: #da3633; }
+        .priority-dot.medium { background: #d29922; }
+        .priority-dot.low { background: #238636; }
         .task-title {
             font-weight: 600;
             font-size: 0.95rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
         }
         .task-meta {
             font-size: 0.75rem;
             color: #7d8590;
             margin-top: 6px;
+            display: flex;
+            gap: 10px;
+        }
+        .task-meta .overdue {
+            color: #da3633;
         }
         .loading {
             text-align: center;
@@ -334,7 +370,7 @@
     <header>
         <h1>🦞 SquadBoard</h1>
         <span class="connection-status" id="connStatus">● Connected</span>
-        <button onclick="app.createTask()" id="addBtn">+ New Task</button>
+        <button onclick="app.openCreateModal()" id="addBtn">+ New Task</button>
     </header>
     
     <!-- Agent Panel -->
@@ -387,6 +423,7 @@
                     ]);
                     this.renderAgents();
                     this.render();
+                    this.setupDropZones();
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('board').style.display = 'grid';
                     console.log('SquadBoard connected to Supabase');
@@ -440,6 +477,112 @@
             selectAgent(name) {
                 this.selectedAgent = this.selectedAgent === name ? null : name;
                 this.renderAgents();
+                this.render();
+            },
+            
+            setupDropZones() {
+                const containers = document.querySelectorAll('.task-container');
+                containers.forEach(container => {
+                    container.addEventListener('dragover', (e) => this.handleDragOver(e));
+                    container.addEventListener('dragenter', (e) => this.handleDragEnter(e));
+                    container.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+                    container.addEventListener('drop', (e) => this.handleDrop(e));
+                });
+            },
+            
+            handleDragStart(e, taskId) {
+                e.dataTransfer.setData('text/plain', taskId);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.classList.add('dragging');
+            },
+            
+            handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+                document.querySelectorAll('.task-container').forEach(c => c.classList.remove('drag-over'));
+            },
+            
+            handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            },
+            
+            handleDragEnter(e) {
+                e.preventDefault();
+                const container = e.target.closest('.task-container');
+                if (container) {
+                    container.classList.add('drag-over');
+                }
+            },
+            
+            handleDragLeave(e) {
+                const container = e.target.closest('.task-container');
+                if (container && !container.contains(e.relatedTarget)) {
+                    container.classList.remove('drag-over');
+                }
+            },
+            
+            async handleDrop(e) {
+                e.preventDefault();
+                const container = e.target.closest('.task-container');
+                if (!container) return;
+                
+                container.classList.remove('drag-over');
+                
+                const taskId = e.dataTransfer.getData('text/plain');
+                if (!taskId) return;
+                
+                const columnId = container.id.replace('col-', '');
+                
+                const columnToStatus = {
+                    backlog: { status: 'todo', uiColumn: null },
+                    inprogress: { status: 'in_progress', uiColumn: null },
+                    inreview: { status: 'in_progress', uiColumn: 'inreview' },
+                    done: { status: 'archived', uiColumn: null }
+                };
+                
+                const mapping = columnToStatus[columnId];
+                if (!mapping) return;
+                
+                const card = document.getElementById(`task-${taskId}`);
+                if (card) {
+                    card.classList.add('processing');
+                    container.appendChild(card);
+                }
+                
+                try {
+                    await this.moveTask(taskId, mapping.status, mapping.uiColumn);
+                } catch (err) {
+                    console.error('Failed to move task:', err);
+                    await this.loadTasks();
+                    this.render();
+                }
+            },
+            
+            async moveTask(taskId, status, uiColumn) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (!task) return;
+                
+                const updateData = { 
+                    status,
+                    metadata: { 
+                        ...task.metadata,
+                        uiColumn: uiColumn 
+                    }
+                };
+                
+                await this.supabaseFetch(`${CONFIG.table}?id=eq.${taskId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(updateData)
+                });
+                
+                task.status = status;
+                task.metadata = updateData.metadata;
+                
+                const card = document.getElementById(`task-${taskId}`);
+                if (card) {
+                    card.classList.remove('processing');
+                }
+                
                 this.render();
             },
             
@@ -514,16 +657,31 @@
                     }
 
                     const emoji = task.metadata?.emoji || '👤';
+                    const priority = task.priority || 'medium';
+                    const dueDateHtml = this.formatDueDate(task.due_date);
+                    const comments = task.metadata?.comments;
+                    const commentHtml = comments && comments.length > 0 
+                        ? `<span>💬 ${comments.length}</span>` 
+                        : '';
 
                     const card = document.createElement('div');
                     card.className = 'task-card';
                     card.id = `task-${task.id}`;
+                    card.draggable = true;
+                    card.dataset.taskId = task.id;
                     card.innerHTML = `
-                        <div class="task-assignee">${emoji}</div>
+                        <div class="task-header">
+                            <span class="task-assignee">${emoji}</span>
+                            <span class="priority-dot ${priority}"></span>
+                        </div>
                         <div class="task-title">${this.escapeHtml(task.title)}</div>
-                        <div class="task-meta">${this.escapeHtml(assigneeName)}</div>
+                        <div class="task-meta">
+                            ${dueDateHtml}${commentHtml}
+                        </div>
                     `;
 
+                    card.addEventListener('dragstart', (e) => this.handleDragStart(e, task.id));
+                    card.addEventListener('dragend', (e) => this.handleDragEnd(e));
                     card.onclick = () => this.openTaskModal(task);
 
                     const col = document.getElementById(`col-${column}`);
@@ -646,6 +804,33 @@
                 return map[status] || status;
             },
             
+            formatDueDate(dueDate) {
+                if (!dueDate) return '';
+                
+                const due = new Date(dueDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                due.setHours(0, 0, 0, 0);
+                
+                const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
+                
+                let label;
+                let isOverdue = false;
+                
+                if (diffDays < 0) {
+                    label = 'Overdue';
+                    isOverdue = true;
+                } else if (diffDays === 0) {
+                    label = 'Today';
+                } else if (diffDays === 1) {
+                    label = 'Tomorrow';
+                } else {
+                    label = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+                
+                return `<span class="${isOverdue ? 'overdue' : ''}">📅 ${label}</span>`;
+            },
+            
             async saveTaskFromModal(taskId) {
                 const title = document.getElementById('modalTitle').value.trim();
                 const description = document.getElementById('modalDescription').value.trim();
@@ -718,34 +903,130 @@
                 }
             },
             
+            suggestAgent(text) {
+                const lower = text.toLowerCase();
+                if (/research|find|look\s*up/.test(lower)) return 'Scout';
+                if (/build|fix|code|implement/.test(lower)) return 'Kodi';
+                if (/draft|email|document/.test(lower)) return 'Teddy';
+                return 'Steve';
+            },
+            
+            openCreateModal() {
+                this.closeModal();
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal">
+                        <div class="modal-header">
+                            <span class="modal-title">✨ Create New Task</span>
+                            <button class="modal-close" onclick="app.closeModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label class="form-label">Title <span style="color: #da3633;">*</span></label>
+                                <input type="text" class="form-input" id="createTitle" placeholder="Enter task title...">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-textarea" id="createDescription" placeholder="Add a description..."></textarea>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Assigned To</label>
+                                    <select class="form-select" id="createAssignee">
+                                        ${this.agents.map(a => `
+                                            <option value="${a.name}" ${a.name === 'Steve' ? 'selected' : ''}>
+                                                ${a.emoji} ${a.name}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Priority</label>
+                                    <select class="form-select" id="createPriority">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-secondary" onclick="app.closeModal()">Cancel</button>
+                            <button id="createSubmitBtn" onclick="app.createTask()" disabled>Create Task</button>
+                        </div>
+                    </div>
+                `;
+                
+                modal.onclick = (e) => {
+                    if (e.target === modal) this.closeModal();
+                };
+                
+                document.body.appendChild(modal);
+                this.currentModal = modal;
+                
+                const titleInput = document.getElementById('createTitle');
+                const submitBtn = document.getElementById('createSubmitBtn');
+                const assigneeSelect = document.getElementById('createAssignee');
+                
+                titleInput.focus();
+                
+                titleInput.addEventListener('input', () => {
+                    const hasTitle = titleInput.value.trim().length > 0;
+                    submitBtn.disabled = !hasTitle;
+                    
+                    if (hasTitle) {
+                        const suggested = this.suggestAgent(titleInput.value);
+                        assigneeSelect.value = suggested;
+                    }
+                });
+                
+                modal.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeModal();
+                    } else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                        if (!submitBtn.disabled) {
+                            this.createTask();
+                        }
+                    }
+                });
+            },
+            
             async createTask() {
-                const title = prompt('Task title:');
-                if (!title || !title.trim()) return;
-
-                const assignedTo = prompt('Assign to (Steve, Jarvis, Kodi, Scout, Teddy):', 'Steve') || 'Steve';
-                const agent = this.agents.find(a => a.name === assignedTo.trim());
+                const title = document.getElementById('createTitle').value.trim();
+                const description = document.getElementById('createDescription').value.trim();
+                const assigneeName = document.getElementById('createAssignee').value;
+                const priority = document.getElementById('createPriority').value;
+                
+                if (!title) return;
+                
+                const agent = this.agents.find(a => a.name === assigneeName);
                 const emoji = agent ? agent.emoji : '👤';
 
                 try {
-                    document.getElementById('addBtn').disabled = true;
+                    document.getElementById('createSubmitBtn').disabled = true;
 
                     await this.supabaseFetch(CONFIG.table, {
                         method: 'POST',
                         body: JSON.stringify({
-                            title: title.trim(),
+                            title,
+                            description: description || null,
                             status: 'todo',
-                            priority: 'medium',
-                            metadata: { emoji, assignee_name: assignedTo.trim() },
+                            priority,
+                            metadata: { emoji, assignee_name: assigneeName },
                             created_at: new Date().toISOString()
                         })
                     });
 
+                    this.closeModal();
                     await this.loadTasks();
                     this.render();
                 } catch (err) {
                     alert('Failed to create task: ' + err.message);
-                } finally {
-                    document.getElementById('addBtn').disabled = false;
+                    document.getElementById('createSubmitBtn').disabled = false;
                 }
             },
             
